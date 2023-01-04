@@ -47,9 +47,9 @@ private:
 
 class Huffman {
   public:
-    static void Compress(std::ifstream &ifs, std::ofstream &ofs);
+    static void Compress(std::string &ifs, std::string &ofs);
 
-    static void Decompress(std::ifstream &ifs, std::ofstream &ofs);
+    static void Decompress(std::string &ifs, std::string &ofs);
 
   private:
     // Helper methods...
@@ -68,13 +68,12 @@ class Huffman {
                                 char>& code_table);
 };
 
-void Huffman::Compress(std::ifstream &ifs, std::ofstream &ofs) {
+void Huffman::Compress(std::string &ifs, std::string &ofs) {
     // array of all possible ASCII values
     int chars[128] = {0};
     PQueue<HuffmanNode> pq;
-    char c;
     // count frequency of every char in input file and put into ASCII array
-    while (ifs.get(c)) {
+    for (char c : ifs) {
         chars[c + 0]++;
     }
     // create min priority queue, ordered by frequency
@@ -109,11 +108,9 @@ void Huffman::Compress(std::ifstream &ifs, std::ofstream &ofs) {
         
     // Put total number of characters in input file in output file
     bos.PutInt(pq.Top().freq());
-    // Reset input file to read again
-    ifs.clear();
-    ifs.seekg(0, std::ios::beg);
+
     // Traverse input file
-    while (ifs.get(c)) {
+    for (char c : ifs) {
         // Get new bit value of char from code table
         std::string temp = code_table.at(c);
         // Place each bit into output file
@@ -123,7 +120,6 @@ void Huffman::Compress(std::ifstream &ifs, std::ofstream &ofs) {
             else 
                 bos.PutBit(1);
         }
-        
     }
 }
 
@@ -152,7 +148,7 @@ void Huffman::PreorderRecur(HuffmanNode *n, BinaryOutputStream& bos,
     delete n;
 }
 
-void Huffman::Decompress(std::ifstream &ifs, std::ofstream &ofs) {
+void Huffman::Decompress(std::string &ifs, std::string &ofs) {
     BinaryInputStream bis(ifs);
     
     std::map<std::string, char> code_table;
@@ -160,6 +156,7 @@ void Huffman::Decompress(std::ifstream &ifs, std::ofstream &ofs) {
     BuildCodeTable(bis, code_table);
     // Get total number of chars out of input file
     int freq = bis.GetInt();
+
     // Read file until no more chars left
     for (int i = 0; i < freq; i++) {
       std::string bits = "";
@@ -182,9 +179,8 @@ void Huffman::Decompress(std::ifstream &ifs, std::ofstream &ofs) {
         itr = code_table.find(bits);
       }
       // Put char matching bit string into output file
-      ofs.put(itr->second);
+      ofs+=(itr->second);
   }
-  ofs.close();
     
 }
 

@@ -16,6 +16,9 @@
 #include <pistache/http.h>
 #include <pistache/router.h>
 
+#include <fstream>
+#include "huffman.h"
+
 using namespace Pistache;
 
 void printCookies(const Http::Request& req)
@@ -50,7 +53,8 @@ public:
     void init(size_t thr = 2)
     {
         auto opts = Http::Endpoint::options()
-                        .threads(static_cast<int>(thr));
+                        .maxRequestSize(1500000).maxResponseSize(1500000)
+                        .threads(static_cast<int>(10));
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -65,102 +69,48 @@ private:
     void setupRoutes()
     {
         using namespace Rest;
-
-        Routes::Post(router, "/record/:name/:value?", Routes::bind(&StatsEndpoint::doRecordMetric, this));
+        
         Routes::Get(router, "/ready", Routes::bind(&Generic::handleReady));
+        Routes::Post(router, "/compress", Routes::bind(&StatsEndpoint::doCompress, this));
+        Routes::Post(router, "/decompress", Routes::bind(&StatsEndpoint::doDecompress, this));
     }
 
-    void doRecordMetric(const Rest::Request& request, Http::ResponseWriter response)
+    void doCompress(const Rest::Request& request, Http::ResponseWriter response) 
     {
-        auto name = request.param(":name").as<std::string>();
+        // std::cout << "Data to compress" << std::endl;
 
-        Guard guard(metricsLock);
-        auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
-            return metric.name() == name;
-        });
+        // stores the inputted file as a string
+        auto body = request.body();
 
-        int val = 1;
-        if (request.hasParam(":value"))
-        {
-            auto value = request.param(":value");
-            val        = value.as<int>();
-        }
+        auto content_type_header = request.headers().tryGet<Pistache::Http::Header::ContentType>();
+        std::cout << content_type_header->mime().toString() << std::endl;
 
-        if (it == std::end(metrics))
-        {
-            metrics.emplace_back(std::move(name), val);
-            response.send(Http::Code::Created, std::to_string(val));
-        }
-        else
-        {
-            auto& metric = *it;
-            metric.incr(val);
-            response.send(Http::Code::Ok, std::to_string(metric.value()));
-        }
+        std::string output;
+
+        std::cout << "Compressing File..." << std::endl;
+        Huffman::Compress(body, output);
+
+        std::cout << "Completed Compressing" << std::endl;
+        //std::cout << body << std::endl;
+
+        
+
+        response.send(Http::Code::Ok, output);
     }
 
-    void doGetMetric(const Rest::Request& request, Http::ResponseWriter response)
+    void doDecompress(const Rest::Request& request, Http::ResponseWriter response) 
     {
-        auto name = request.param(":name").as<std::string>();
+        auto body = request.body();
 
-        Guard guard(metricsLock);
-        auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
-            return metric.name() == name;
-        });
+        std::string output;
 
-        if (it == std::end(metrics))
-        {
-            response.send(Http::Code::Not_Found, "Metric does not exist");
-        }
-        else
-        {
-            const auto& metric = *it;
-            response.send(Http::Code::Ok, std::to_string(metric.value()));
-        }
+        std::cout << "Decompressing File..." << std::endl;
+        Huffman::Decompress(body, output);
+
+        std::cout << "Completed Decompressing" << std::endl;
+
+        response.send(Http::Code::Ok, output);
     }
-
-    void doAuth(const Rest::Request& request, Http::ResponseWriter response)
-    {
-        printCookies(request);
-        response.cookies()
-            .add(Http::Cookie("lang", "en-US"));
-        response.send(Http::Code::Ok);
-    }
-
-    class Metric
-    {
-    public:
-        explicit Metric(std::string name, int initialValue = 1)
-            : name_(std::move(name))
-            , value_(initialValue)
-        { }
-
-        int incr(int n = 1)
-        {
-            int old = value_;
-            value_ += n;
-            return old;
-        }
-
-        int value() const
-        {
-            return value_;
-        }
-
-        const std::string& name() const
-        {
-            return name_;
-        }
-
-    private:
-        std::string name_;
-        int value_;
-    };
-
-    using Lock  = std::mutex;
-    using Guard = std::lock_guard<Lock>;
-    Lock metricsLock;
-    std::vector<Metric> metrics;
 
     std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Router router;
@@ -168,7 +118,7 @@ private:
 
 int main(int argc, char* argv[])
 {
-    Port port(9080);
+    Port port(9070);
 
     int thr = 2;
 

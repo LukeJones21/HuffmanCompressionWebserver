@@ -7,28 +7,30 @@
 
 class BinaryInputStream {
 public:
-    explicit BinaryInputStream(std::ifstream &ifs);
+    explicit BinaryInputStream(std::string &ifs);
 
     bool GetBit();
     char GetChar();
     int GetInt();
 
 private:
-    std::ifstream &ifs;
+    std::string &ifs;
     char buffer = 0;
     size_t avail = 0;
+    unsigned int cur_char = 0;
 
     // Helpers
     void RefillBuffer();
 };
 
-BinaryInputStream::BinaryInputStream(std::ifstream &ifs) : ifs(ifs) { }
+BinaryInputStream::BinaryInputStream(std::string &ifs) : ifs(ifs) { }
 
 void BinaryInputStream::RefillBuffer() {
     // Read the next byte from the input stream
-    ifs.get(buffer);
-    if (ifs.gcount() != 1)
+    buffer = ifs[cur_char];
+    if (cur_char == ifs.size())
         throw std::underflow_error("No more characters to read");
+    cur_char++;
     avail = 8;
 }
 
@@ -70,7 +72,7 @@ int BinaryInputStream::GetInt() {
 
 class BinaryOutputStream {
   public:
-    explicit BinaryOutputStream(std::ofstream &ofs);
+    explicit BinaryOutputStream(std::string &ofs);
     ~BinaryOutputStream();
 
     void Close();
@@ -80,7 +82,7 @@ class BinaryOutputStream {
     void PutInt(int word);
 
   private:
-    std::ofstream &ofs;
+    std::string &ofs;
     char buffer = 0;
     size_t count = 0;
 
@@ -88,7 +90,7 @@ class BinaryOutputStream {
     void FlushBuffer();
 };
 
-BinaryOutputStream::BinaryOutputStream(std::ofstream &ofs) : ofs(ofs) { }
+BinaryOutputStream::BinaryOutputStream(std::string &ofs) : ofs(ofs) { }
 
 BinaryOutputStream::~BinaryOutputStream() {
     Close();
@@ -108,7 +110,7 @@ void BinaryOutputStream::FlushBuffer() {
         buffer <<= (8 - count);
 
     // Write to output stream
-    ofs.put(buffer);
+    ofs+=buffer;
 
     // Reset buffer
     buffer = 0;
