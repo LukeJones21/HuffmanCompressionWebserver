@@ -7,30 +7,36 @@
 
 class BinaryInputStream {
 public:
-    explicit BinaryInputStream(std::string &ifs);
+    explicit BinaryInputStream(std::vector<bool> &ifs);
 
     bool GetBit();
     char GetChar();
     int GetInt();
 
 private:
-    std::string &ifs;
+    std::vector<bool> ifs;
     char buffer = 0;
     size_t avail = 0;
-    unsigned int cur_char = 0;
+    unsigned int cur_bit = 0;
 
     // Helpers
     void RefillBuffer();
 };
 
-BinaryInputStream::BinaryInputStream(std::string &ifs) : ifs(ifs) { }
+BinaryInputStream::BinaryInputStream(std::vector<bool> &ifs) : ifs(ifs) { }
 
 void BinaryInputStream::RefillBuffer() {
-    // Read the next byte from the input stream
-    buffer = ifs[cur_char];
-    if (cur_char == ifs.size())
+    
+    if (cur_bit == ifs.size())
         throw std::underflow_error("No more characters to read");
-    cur_char++;
+    
+    buffer = 0;
+    //Read the next byte from the input stream
+    for (unsigned int i = 0; i < ifs.size(); ++i) {
+        if (ifs[i]) {
+            buffer |= 1 << i;
+        }
+    }
     avail = 8;
 }
 
@@ -72,7 +78,7 @@ int BinaryInputStream::GetInt() {
 
 class BinaryOutputStream {
   public:
-    explicit BinaryOutputStream(std::string &ofs);
+    explicit BinaryOutputStream(std::vector<bool> &ofs);
     ~BinaryOutputStream();
 
     void Close();
@@ -82,7 +88,7 @@ class BinaryOutputStream {
     void PutInt(int word);
 
   private:
-    std::string &ofs;
+    std::vector<bool> &ofs;
     char buffer = 0;
     size_t count = 0;
 
@@ -90,7 +96,7 @@ class BinaryOutputStream {
     void FlushBuffer();
 };
 
-BinaryOutputStream::BinaryOutputStream(std::string &ofs) : ofs(ofs) { }
+BinaryOutputStream::BinaryOutputStream(std::vector<bool> &ofs) : ofs(ofs) { }
 
 BinaryOutputStream::~BinaryOutputStream() {
     Close();
@@ -110,7 +116,9 @@ void BinaryOutputStream::FlushBuffer() {
         buffer <<= (8 - count);
 
     // Write to output stream
-    ofs+=buffer;
+    for (int i = 0; i < 8; ++i) {
+        ofs.push_back((buffer >> i) & 1);
+    }
 
     // Reset buffer
     buffer = 0;

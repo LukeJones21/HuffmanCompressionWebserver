@@ -34,7 +34,7 @@ public:
         return freq_ < n.freq_;
     }
 
-    size_t freq() { return freq_; }
+    size_t freq() {  return freq_; }
     size_t data() { return ch_; }
     HuffmanNode* left() { return left_; }
     HuffmanNode* right() { return right_; }
@@ -47,9 +47,9 @@ private:
 
 class Huffman {
   public:
-    static void Compress(std::string &ifs, std::string &ofs);
+    static void Compress(std::string &ifs, std::vector<bool> &ofs);
 
-    static void Decompress(std::string &ifs, std::string &ofs);
+    static void Decompress(std::vector<bool> &ifs, std::string &ofs);
 
   private:
     // Helper methods...
@@ -68,7 +68,7 @@ class Huffman {
                                 char>& code_table);
 };
 
-void Huffman::Compress(std::string &ifs, std::string &ofs) {
+void Huffman::Compress(std::string &ifs, std::vector<bool> &ofs) {
     // array of all possible ASCII values
     int chars[128] = {0};
     PQueue<HuffmanNode> pq;
@@ -107,6 +107,7 @@ void Huffman::Compress(std::string &ifs, std::string &ofs) {
     PreorderRecur(root, bos, "", code_table);
         
     // Put total number of characters in input file in output file
+    std::cout << pq.Top().freq() << std::endl;
     bos.PutInt(pq.Top().freq());
 
     // Traverse input file
@@ -148,7 +149,7 @@ void Huffman::PreorderRecur(HuffmanNode *n, BinaryOutputStream& bos,
     delete n;
 }
 
-void Huffman::Decompress(std::string &ifs, std::string &ofs) {
+void Huffman::Decompress(std::vector<bool> &ifs, std::string &ofs) {
     BinaryInputStream bis(ifs);
     
     std::map<std::string, char> code_table;
